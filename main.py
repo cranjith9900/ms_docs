@@ -1,34 +1,60 @@
-from fastapi import FastAPI, Form, Request, status
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+# ------------------ APP ------------------
+app = FastAPI(
+    title="FastAPI Backend",
+    description="Backend API for Next.js frontend",
+    version="1.0.0"
+)
+
+# ------------------ CORS ------------------
+# Allow Next.js frontend to call this API
+# (Later replace "*" with your deployed frontend URL)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ------------------ MODELS ------------------
+class HelloRequest(BaseModel):
+    name: str = Field(..., min_length=1, example="Ranjith")
 
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+class HelloResponse(BaseModel):
+    message: str
+    success: bool
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    print('Request for index page received')
-    return templates.TemplateResponse('index.html', {"request": request})
 
-@app.get('/favicon.ico')
-async def favicon():
-    file_name = 'favicon.ico'
-    file_path = './static/' + file_name
-    return FileResponse(path=file_path, headers={'mimetype': 'image/vnd.microsoft.icon'})
+# ------------------ ROUTES ------------------
 
-@app.post('/hello', response_class=HTMLResponse)
-async def hello(request: Request, name: str = Form(...)):
-    if name:
-        print('Request for hello page received with name=%s' % name)
-        return templates.TemplateResponse('hello.html', {"request": request, 'name':name})
-    else:
-        print('Request for hello page received with no name or blank name -- redirecting')
-        return RedirectResponse(request.url_for("index"), status_code=status.HTTP_302_FOUND)
+# Health check (used by Azure & monitoring)
+@app.get("/", tags=["Health"])
+async def health():
+    return {"status": "ok", "service": "fastapi-backend"}
 
-if __name__ == '__main__':
-    uvicorn.run('main:app', host='0.0.0.0', port=8000)
+
+# Main API endpoint (called from Next.js)
+@app.post("/hello", response_model=HelloResponse, tags=["Greeting"])
+async def say_hello(payload: HelloRequest):
+    name = payload.name.strip()
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+
+    return HelloResponse(
+        message=f"Hello {name} 👋",
+        success=True
+    )
+
+
+# Example extra endpoint (good practice)
+@app.get("/api/time", tags=["Utility"])
+async def get_server_time():
+    from datetime import datetime
+    return {"server_time": datetime.utcnow().isoformat() + "Z"}
 
