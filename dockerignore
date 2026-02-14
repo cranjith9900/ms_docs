@@ -1,9 +1,36 @@
 .git
-__pycache__
-*.pyc
+**pycache**
+\*.pyc
 .env
 .venv
 venv
 .vscode
 .antigravity
 node_modules
+
+# frontend
+
+frontend
+frontend/.next
+frontend/node_modules
+
+# python
+
+**pycache**
+\*.pyc
+.venv
+venv
+
+# git
+
+.git
+.gitignore
+
+# vscode
+
+.vscode
+
+# env
+
+.env
+.env.local
